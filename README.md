@@ -11,8 +11,9 @@
 
 Nutritalk is a WhatsApp-based AI assistant built for Youvit (Indonesia's leading gummy vitamin brand) using RAG technology. The system provides instant, accurate nutritional guidance, automating 70-80% of customer inquiries that previously required human nutritionist intervention.
 
-![nutritalk chat](images/nutritalk_1.png)
-![nutritalk chat](images/nutritalk_2.png)
+![nutritalk product recommendations](images/nutritalk_1.png)
+![nutritalk hallucinate](images/nutritalk_2.png)
+![nutritalk escalate the chat to nutritionist](images/nutritalk_3.png)
 
 ### ⚡ Impact Achieved
 
