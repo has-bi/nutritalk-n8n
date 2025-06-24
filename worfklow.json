@@ -109,7 +109,7 @@
       "name": "Vector_Embedder1",
       "credentials": {
         "openAiApi": {
-          "id": "Z28xmezJTrvkLaM5",
+          "id": "u",
           "name": "OpenAi account"
         }
       }
@@ -379,7 +379,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhOWQ1ZjA1Mi1kZTdjLTQ0MTItOGI3My1mYWNhOTk3NjVjM2QiLCJ1bmlxdWVfbmFtZSI6ImluZm9AeW91dml0LmNvLmlkIiwibmFtZWlkIjoiaW5mb0B5b3V2aXQuY28uaWQiLCJlbWFpbCI6ImluZm9AeW91dml0LmNvLmlkIiwiYXV0aF90aW1lIjoiMDIvMjAvMjAyNSAwNDowNzowOSIsInRlbmFudF9pZCI6IjMwNzAzMCIsImRiX25hbWUiOiJtdC1wcm9kLVRlbmFudHMiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBRE1JTklTVFJBVE9SIiwiZXhwIjoyNTM0MDIzMDA4MDAsImlzcyI6IkNsYXJlX0FJIiwiYXVkIjoiQ2xhcmVfQUkifQ.zWepdr3ktfbf0Jd5NCw_Ya5OoOVM7wN3S1htq3Y8IJo"
+              "value": "key"
             }
           ]
         },
@@ -413,7 +413,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhOWQ1ZjA1Mi1kZTdjLTQ0MTItOGI3My1mYWNhOTk3NjVjM2QiLCJ1bmlxdWVfbmFtZSI6ImluZm9AeW91dml0LmNvLmlkIiwibmFtZWlkIjoiaW5mb0B5b3V2aXQuY28uaWQiLCJlbWFpbCI6ImluZm9AeW91dml0LmNvLmlkIiwiYXV0aF90aW1lIjoiMDIvMjAvMjAyNSAwNDowNzowOSIsInRlbmFudF9pZCI6IjMwNzAzMCIsImRiX25hbWUiOiJtdC1wcm9kLVRlbmFudHMiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBRE1JTklTVFJBVE9SIiwiZXhwIjoyNTM0MDIzMDA4MDAsImlzcyI6IkNsYXJlX0FJIiwiYXVkIjoiQ2xhcmVfQUkifQ.zWepdr3ktfbf0Jd5NCw_Ya5OoOVM7wN3S1htq3Y8IJo"
+              "value": "key"
             }
           ]
         },
@@ -720,7 +720,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhOWQ1ZjA1Mi1kZTdjLTQ0MTItOGI3My1mYWNhOTk3NjVjM2QiLCJ1bmlxdWVfbmFtZSI6ImluZm9AeW91dml0LmNvLmlkIiwibmFtZWlkIjoiaW5mb0B5b3V2aXQuY28uaWQiLCJlbWFpbCI6ImluZm9AeW91dml0LmNvLmlkIiwiYXV0aF90aW1lIjoiMDIvMjAvMjAyNSAwNDowNzowOSIsInRlbmFudF9pZCI6IjMwNzAzMCIsImRiX25hbWUiOiJtdC1wcm9kLVRlbmFudHMiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBRE1JTklTVFJBVE9SIiwiZXhwIjoyNTM0MDIzMDA4MDAsImlzcyI6IkNsYXJlX0FJIiwiYXVkIjoiQ2xhcmVfQUkifQ.zWepdr3ktfbf0Jd5NCw_Ya5OoOVM7wN3S1htq3Y8IJo"
+              "value": "key"
             }
           ]
         },
