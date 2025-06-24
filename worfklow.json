@@ -1,0 +1,1123 @@
+{
+  "name": "Nutritalk",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Layer 1: Knowledge Embedding Layer\n### Purpose\nConverts product information from Google Drive CSV into searchable vector embeddings stored in Qdrant.\n\n### Key Configuration\nChunk Size: 512 tokens with 50-token overlap\nEmbeddings: OpenAI text-embedding-3-small\nStorage: Qdrant collection \"general\"\nMetadata: product_name, product_category",
+        "height": 760,
+        "width": 960
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-2180, -500],
+      "typeVersion": 1,
+      "id": "1b6ef131-0110-4fb6-b3ed-583557c001b5",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Layer 2: Message Logic Layer\n### Purpose\nManages incoming WhatsApp messages, user sessions, and determines whether to use AI or human handoff.\n\n### Session Management\nStorage: Redis with 30-minute TTL\nSession Data: waId, timestamps, message count, bot status\nHandoff Triggers: \"bicara dengan ahli gizi\", \"talk to nutritionist\"",
+        "height": 1160,
+        "width": 1460,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-2180, 380],
+      "typeVersion": 1,
+      "id": "aeabc124-47a9-42eb-9f12-4cf6728ce611",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1kvC6CQaSzhR9HSN87cKxXGvuahtiQ0M9",
+          "mode": "list",
+          "cachedResultName": "Nutritalk_Knowledge Collections - Sheet4 (1).csv",
+          "cachedResultUrl": "https://drive.google.com/file/d/1kvC6CQaSzhR9HSN87cKxXGvuahtiQ0M9/view?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [-2120, -220],
+      "id": "198cd4bc-0ede-4a06-9a87-49bef35ed3d6",
+      "name": "CSV_Data_Source",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "LjrP3oI36UAlyFWA",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "delimiter": ","
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [-1900, -220],
+      "id": "ea63f6d4-410e-4207-b337-4ae1edcc6b3a",
+      "name": "CSV_Parser"
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $('CSV_Parser').item.json.descriptions }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "product_name",
+                "value": "={{ $('CSV_Parser').item.json.product_name }}"
+              },
+              {
+                "name": "product_category",
+                "value": "={{ $('CSV_Parser').item.json.product_category }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [-1580, -40],
+      "id": "f2cd5be1-b7e5-4760-836c-90bae1b00131",
+      "name": "Document_Loader"
+    },
+    {
+      "parameters": {
+        "chunkSize": 512,
+        "chunkOverlap": 50
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
+      "typeVersion": 1,
+      "position": [-1500, 120],
+      "id": "b67f8c99-910d-4d54-92d7-090dd5c75d4c",
+      "name": "Text_Chunker"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.1,
+      "position": [-1760, -40],
+      "id": "34eb6770-6145-4e99-b455-8ca66d0ab3e3",
+      "name": "Vector_Embedder1",
+      "credentials": {
+        "openAiApi": {
+          "id": "Z28xmezJTrvkLaM5",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "general",
+          "mode": "list",
+          "cachedResultName": "general"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [-1680, -220],
+      "id": "35cc809d-9605-4f04-8176-1706fc2164bc",
+      "name": "Knowledge_Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "KlgISKF5tBGT2HPW",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "4e6d2615-3f81-46a2-aeb6-1c4ccfc07be0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-2140, 640],
+      "id": "0133d031-9a2f-4d77-a7a3-f5d6a144cc99",
+      "name": "WhatsApp_Webhook",
+      "webhookId": "4e6d2615-3f81-46a2-aeb6-1c4ccfc07be0"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Function: Parse Message\nconst incomingData = items[0].json.body;\n\nconst messageData = {\n    waId: incomingData.waId,\n    message: incomingData.text,\n    timestamp: incomingData.timestamp,\n    senderName: incomingData.senderName,\n    messageId: incomingData.whatsappMessageId,\n    conversationId: incomingData.conversationId\n};\n\nconst clarityIndicators = {\n    negative: ['bicara dengan ahli gizi','talk to nutritionist']\n};\n\nconst normalizedMessage = messageData.message.toLowerCase().trim();\n\nmessageData.analysis = {\n    isHumanActive: clarityIndicators.negative.some(phrase => \n        normalizedMessage === phrase.toLocaleLowerCase()\n    )\n};\n\nreturn messageData;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1920, 640],
+      "id": "a5185be3-a8f7-443c-aa45-93152bf6ae68",
+      "name": "Message_Parser"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "=wa:session:{{$node[\"Message_Parser\"].json.waId}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [-1740, 640],
+      "id": "ded780ca-2c7d-45f9-90bf-d94ed1b25b95",
+      "name": "Session_Retriever",
+      "credentials": {
+        "redis": {
+          "id": "ZSNs39wq7WkwMF83",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the raw string from Redis response\nconst rawString = $input.first().json.propertyName;\n\n// If no session exists, return null/empty values to let flow continue\nif (!rawString) {\n    return [\n        {\n            json: {\n                existingSession: null\n            }\n        }\n    ];\n}\n\ntry {\n    // Only parse if session exists\n    const parsedData = JSON.parse(rawString);\n    return [\n        {\n            json: {\n                existingSession: {\n                    waId: parsedData.waId,\n                    startTime: parsedData.startTime,\n                    lastActivity: parsedData.lastActivity,\n                    messageCount: parsedData.messageCount,\n                    botActive: parsedData.BOT_ACTIVE,\n                    conversationId: parsedData.conversationId\n                }\n            }\n        }\n    ];\n} catch (error) {\n    // If parsing fails, treat as no session\n    console.log('Error parsing session data:', error);\n    return [\n        {\n            json: {\n                existingSession: null\n            }\n        }\n    ];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1560, 640],
+      "id": "ce0cd3d0-fd4c-4c69-b7db-10efb3089acf",
+      "name": "Session_Validator"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.existingSession }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "object",
+                      "operation": "notExists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e3f916c8-f274-4c6d-893f-e0b44b04d1fc",
+                    "leftValue": "={{ $json.existingSession.botActive }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "43af1c41-5d60-4762-807c-ecdd3d440a30",
+                    "leftValue": "={{ $json.existingSession.botActive }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [-1360, 640],
+      "id": "38b5a1aa-8afa-494d-88b5-f9f0d1ce8d67",
+      "name": "Session_Router"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Function: Session Manager\nconst messageData = $('Message_Parser');\nconst existingSession = $input.item.json.propertyName ? JSON.parse($input.item.json.propertyName) : null;\n\nconst session = {\n    waId: messageData.item.json.waId,\n    startTime: existingSession ? existingSession.startTime : Date.now(),\n    lastActivity: Date.now(),\n    messageCount: existingSession ? existingSession.messageCount + 1 : 1,\n    BOT_ACTIVE: !messageData.item.json.analysis.isHumanActive,\n    conversationId: messageData.item.json.conversationId\n};\n\nreturn {\n    sessionKey: `wa:session:${messageData.item.json.waId}`,\n    sessionData: JSON.stringify(session),\n    messageData: messageData.item.json,\n    session: session\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1120, 640],
+      "id": "2b655856-75f7-4ed4-81d1-d8304825ac28",
+      "name": "Session_Creator",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $json.sessionKey }}",
+        "value": "={{ $json.sessionData }}",
+        "expire": true,
+        "ttl": 1800
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [-940, 640],
+      "id": "00e005fc-63ec-401d-820b-bf2c1469861e",
+      "name": "Session_Storage",
+      "credentials": {
+        "redis": {
+          "id": "ZSNs39wq7WkwMF83",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.session.BOT_ACTIVE }}",
+                    "rightValue": "BOT",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6f9e3f94-62a5-420a-8d99-f213b381f524",
+                    "leftValue": "={{ $json.session.BOT_ACTIVE }}",
+                    "rightValue": "HANDOFF",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [-1920, 860],
+      "id": "f0530b21-4976-41f5-9b81-000ff414d26b",
+      "name": "Intent_Router"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://live-mt-server.wati.io/307030/api/v1/sendSessionMessage/{{ $('Intent_Router').item.json.messageData.waId }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "messageText",
+              "value": "=Mohon tunggu, kami akan menghubungkan Anda dengan Ahli Gizi Youvit.\nJam operasional Ahli Gizi kami adalah Senin - Jumat, pukul 09:00 - 18:00 WIB.\n\n_Please wait, we will connect you with our Youvit nutritionist._\n_Our nutritionist operational hours are Monday - Friday, 09:00 - 18:00 WIB._\n\n_Message generated by Youvit AI Assistant_"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhOWQ1ZjA1Mi1kZTdjLTQ0MTItOGI3My1mYWNhOTk3NjVjM2QiLCJ1bmlxdWVfbmFtZSI6ImluZm9AeW91dml0LmNvLmlkIiwibmFtZWlkIjoiaW5mb0B5b3V2aXQuY28uaWQiLCJlbWFpbCI6ImluZm9AeW91dml0LmNvLmlkIiwiYXV0aF90aW1lIjoiMDIvMjAvMjAyNSAwNDowNzowOSIsInRlbmFudF9pZCI6IjMwNzAzMCIsImRiX25hbWUiOiJtdC1wcm9kLVRlbmFudHMiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBRE1JTklTVFJBVE9SIiwiZXhwIjoyNTM0MDIzMDA4MDAsImlzcyI6IkNsYXJlX0FJIiwiYXVkIjoiQ2xhcmVfQUkifQ.zWepdr3ktfbf0Jd5NCw_Ya5OoOVM7wN3S1htq3Y8IJo"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1920, 1120],
+      "id": "e7ac5dcf-dc6e-4f93-8ac4-fa638a3b7c8d",
+      "name": "Handoff_Message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://live-mt-server.wati.io/307030/api/v1/assignOperator",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "gabby@youvit.co.id"
+            },
+            {
+              "name": "whatsappNumber",
+              "value": "={{ $('Intent_Router').item.json.messageData.waId }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhOWQ1ZjA1Mi1kZTdjLTQ0MTItOGI3My1mYWNhOTk3NjVjM2QiLCJ1bmlxdWVfbmFtZSI6ImluZm9AeW91dml0LmNvLmlkIiwibmFtZWlkIjoiaW5mb0B5b3V2aXQuY28uaWQiLCJlbWFpbCI6ImluZm9AeW91dml0LmNvLmlkIiwiYXV0aF90aW1lIjoiMDIvMjAvMjAyNSAwNDowNzowOSIsInRlbmFudF9pZCI6IjMwNzAzMCIsImRiX25hbWUiOiJtdC1wcm9kLVRlbmFudHMiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBRE1JTklTVFJBVE9SIiwiZXhwIjoyNTM0MDIzMDA4MDAsImlzcyI6IkNsYXJlX0FJIiwiYXVkIjoiQ2xhcmVfQUkifQ.zWepdr3ktfbf0Jd5NCw_Ya5OoOVM7wN3S1htq3Y8IJo"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1920, 1340],
+      "id": "e1e319b1-00a7-4656-adf1-1885debd2f19",
+      "name": "Human_Assignment"
+    },
+    {
+      "parameters": {
+        "content": "## Layer 3: Retrieval Layer\n### Purpose\nPerforms semantic search and generates contextual AI responses using retrieved knowledge.",
+        "height": 660,
+        "width": 1800,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-560, 360],
+      "typeVersion": 1,
+      "id": "f4764852-a970-478c-8cba-5d26df20e180",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [-480, 560],
+      "id": "35936c4f-cc7e-40a1-a5d9-d67ebbe86b00",
+      "name": "RAG_Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer $OPENAI_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "input",
+              "value": "={{ $json.query.positive_example }}"
+            },
+            {
+              "name": "model",
+              "value": "text-embedding-3-small"
+            },
+            {
+              "name": "encoding_format",
+              "value": "float"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-260, 560],
+      "id": "8d0cde83-2e1f-413c-b00b-6b850ea2b942",
+      "name": "Query_Embedder",
+      "credentials": {
+        "openAiApi": {
+          "id": "Z28xmezJTrvkLaM5",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0e53e64f-8042-4fe3-b677-525f48243dbc",
+              "name": "positive_answer",
+              "value": "={{ $json.data[0].embedding }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-60, 560],
+      "id": "dc0e1f43-70e7-4267-98c8-4a5ea366ecf8",
+      "name": "Embedding_Extractor"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://607a4ed8-c3d2-4567-94d6-3c6ba9abb18d.us-east4-0.gcp.cloud.qdrant.io:6333/collections/general/points/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"query\": {\n        \"recommend\": {\n            \"positive\": [[{{ $json.positive_answer }}]],\n            \"strategy\": \"average_vector\"\n        }\n    },\n\"limit\":1\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [140, 560],
+      "id": "eed6b1a8-b113-4dd9-94f0-0e25fcb01c00",
+      "name": "Similarity_Search",
+      "credentials": {
+        "qdrantApi": {
+          "id": "KlgISKF5tBGT2HPW",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://607a4ed8-c3d2-4567-94d6-3c6ba9abb18d.us-east4-0.gcp.cloud.qdrant.io:6333/collections/general/points",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n\"ids\": [\"{{ $json.result.points[0].id }}\"],\n\"with_payload\": true}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-260, 820],
+      "id": "dc5b20b9-6e96-47e5-a2a4-b9c2ee0cd522",
+      "name": "Context_Retriever",
+      "credentials": {
+        "qdrantApi": {
+          "id": "KlgISKF5tBGT2HPW",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "result.points",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [360, 560],
+      "id": "a0787a56-5869-4e28-ac6c-904ab95bce63",
+      "name": "Results_Splitter"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "result",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [-60, 820],
+      "id": "98497327-563e-4dc7-a89f-679c1c9644ec",
+      "name": "Context_Splitter"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [580, 800],
+      "id": "f76340e8-f0f6-45e8-85c2-35a8d1c7f66d",
+      "name": "Data_Combiner"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7113f3b2-9d56-4dfa-8c4c-1fcee319acfc",
+              "name": "information_score",
+              "value": "={{ $json.score }}",
+              "type": "number"
+            },
+            {
+              "id": "83f380fc-ea85-421b-8930-1f3104e4ab38",
+              "name": "information",
+              "value": "={{ $json.payload.content }}",
+              "type": "string"
+            },
+            {
+              "id": "4ef0c413-e824-4bdd-a141-8d859fd36468",
+              "name": "product_name",
+              "value": "={{ $json.payload.metadata.product_name }}",
+              "type": "string"
+            },
+            {
+              "id": "71a45eff-b0ce-4235-b4b1-6908b6bc2260",
+              "name": "product_category",
+              "value": "={{ $json.payload.metadata.product_category }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [760, 800],
+      "id": "7b4fcc7a-9ab8-4201-98cb-13a468bb968a",
+      "name": "Data_Formatter"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "response",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [920, 800],
+      "id": "c70fc1c4-e408-4125-b0d1-083f8c6ef21a",
+      "name": "Response_Aggregator"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [-1680, 1060],
+      "id": "f566fa43-418d-4a08-ba9c-e2fd81a77052",
+      "name": "LLM_Engine",
+      "credentials": {
+        "openAiApi": {
+          "id": "Z28xmezJTrvkLaM5",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Intent_Router').item.json.sessionKey }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [-1500, 1120],
+      "id": "14602128-2816-4e00-8481-b3c6c05e067a",
+      "name": "Conversation_Memory"
+    },
+    {
+      "parameters": {
+        "name": "nutritalk",
+        "workflowId": {
+          "__rl": true,
+          "value": "ApUG2hww0ywbsgt2",
+          "mode": "id"
+        },
+        "specifyInputSchema": true,
+        "schemaType": "manual",
+        "inputSchema": "{\n    \"type\": \"object\",\n    \"properties\": {\n        \"positive_example\": {\n            \"type\": \"string\",\n            \"description\": \"A string with a product description matching the user's questions request\"\n        }\n    }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.3,
+      "position": [-1280, 1060],
+      "id": "93405836-55a8-4881-affd-2800bf623300",
+      "name": "Knowledge_Tool"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messageData.message }}",
+        "options": {
+          "systemMessage": "=# YOUVIT AI ASSISTANT SYSTEM PROMPT\n\n## ROLE DEFINITION\nYou are Youvit's Nutrition Information Specialist, providing accurate nutrition guidance and vitamin information to users including pregnant women, elderly individuals, and families with children over 3 years old.\n\n## RESPONSE GENERATION PROCESS\n1. GENERATE: Create your initial response based on user's query\n2. REVIEW: Evaluate your response against all guidelines below\n3. REVISE: Make necessary corrections if any guidelines are not met\n4. DELIVER: Send the final, compliant response to the user\n\n## USER PERSONALIZATION\n* When a user shares their name, address them by their first name only in your responses\n* Store the user's name as {{ $json.messageData.senderName }} and use it naturally in conversation\n* If no name is provided, use neutral greetings like \"Halo\" or \"Hi there\"\n* Example: \"Halo {{ $json.messageData.senderName }}, terima kasih sudah menghubungi Youvit.\"\n\n## COMMUNICATION GUIDELINES\n* Use WhatsApp formatting: *bold*, _italic_, • bullet points\n* Maintain a friendly, casual yet professional tone\n* Keep responses concise and easy to understand\n* Use \"Our\" & \"Us\" instead of \"I\" or \"Me\"\n* Always convey empathy like a human nutritionist would\n* Respond only in Bahasa Indonesia or English:\n  - If the user input is in Bahasa Indonesia, respond in Bahasa Indonesia\n  - If the user input is in any other language (including mixed languages), respond in English\n* Use contextually appropriate greetings in the language being used:\n  - In Bahasa Indonesia: \"Semoga harimu menyenangkan\", \"Semoga sehat selalu\", etc.\n  - In English: \"Have a nice day\", \"Take care\", etc.\n  - Never directly translate greetings between languages\n* End every response with one empty line before the Footer \"_Message generated by Youvit AI Assistant_\"\n\n## PRODUCT INFORMATION SCOPE\nOnly provide detailed information about these Youvit products:\n\n*Kids Category:*\n- Youvit Kids Multivitamin\n- Youvit Omega-3\n- Youvit Curcuma & Vitamin\n- Youvit Vitamin A+ Lutein\n\n*Adults Category:*\n- Youvit Adult Multivitamin\n- Youvit ACV (Apple Cider Vinegar)\n- Youvit Herb & Vitamin\n- Youvit Biotin+ for Men\n- Youvit FibreFix\n- Youvit Ezzlep\n\n*Beauty Category:*\n- Youvit Collagen Gummy\n- Youvit Collagen Powder\n- Youvit AcNO\n- Youvit Beauti+\n\n## SPECIAL POPULATION CONSIDERATIONS\n* For pregnant women: Emphasize products safe during pregnancy and highlight nutritional needs\n* For elderly users: Focus on easy-to-understand language and products addressing age-related concerns\n* For children: Only recommend products suitable for children over 3 years and emphasize the importance of parental supervision, children under 3 years old need parental supervision when consuming youvit.\n\n## ESCALATION POLICY\nFor any of these situations:\n* Questions beyond Youvit products\n* Complex medical queries\n* Users reporting serious medical issues\n* Questions you cannot answer confidently with Youvit product information\n* Requests for personalized medical advice\n* Reports of damaged products or packaging\n* Complaints about product quality or defects\n\nRespond with:\n\"_Untuk mendapatkan informasi yang lebih detail, silakan ketik_ *'bicara dengan ahli gizi'* *atau* *'talk to nutritionist'* *untuk berbicara dengan ahli gizi kami.*\"\n\n## COLLABORATION AND SPONSORSHIP REQUESTS\n* For any inquiries about brand collaborations, sponsorships, or partnership events, respond with:\n\"_Untuk informasi mengenai kolaborasi atau sponsorship dengan Youvit, silakan kunjungi link berikut:_ *bit.ly/youvitcollab*\"\n\n## CONVERSATION FLOW\n* For clear responses about Youvit products, end with: \"Apakah ada pertanyaan lain yang ingin ditanyakan, {{ $json.messageData.senderName }} ?\"\n* If user expresses thanks or gratitude, only reply with a simple acknowledgment (e.g., \"You are welcome, {{ $json.messageData.senderName }}\") without follow-up questions\n* If {{ $json.messageData.senderName }} is not available, omit it from these templates\n\n## SELF-REVIEW CHECKLIST\nBefore sending your response, verify:\n1. ✓ Does it only contain information about listed Youvit products?\n2. ✓ Is the formatting correct (WhatsApp style)?\n3. ✓ Is the tone friendly, casual, and empathetic?\n4. ✓ Does it use \"Our\"/\"Us\" instead of \"I\"/\"Me\"?\n5. ✓ Does it address the user by name if {{ $json.messageData.senderName }} is available?\n6. ✓ Is it appropriate for the user's demographic (pregnant, elderly, parent)?\n7. ✓ Does it properly escalate queries outside your scope?\n8. ✓ Does it provide collaboration/sponsorship link when appropriate?\n9. ✓ Does it end with the required footer?\n10. ✓ Is the information accurate and helpful?\n11. ✓ Does it have good paragraphing format?\n12. ✓ Are greetings contextually appropriate for the language being used?\n13. ✓ Is the response in the correct language (Bahasa Indonesia for Indonesian inputs, English for all other languages)?\n\nIf any check fails, revise your response before sending."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [-1620, 860],
+      "id": "ae0bd9dd-dcc4-4b45-aaf5-7a2dc2b6af3e",
+      "name": "Response_Generator"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://live-mt-server.wati.io/307030/api/v1/sendSessionMessage/{{ $('Intent_Router').item.json.messageData.waId }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "messageText",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhOWQ1ZjA1Mi1kZTdjLTQ0MTItOGI3My1mYWNhOTk3NjVjM2QiLCJ1bmlxdWVfbmFtZSI6ImluZm9AeW91dml0LmNvLmlkIiwibmFtZWlkIjoiaW5mb0B5b3V2aXQuY28uaWQiLCJlbWFpbCI6ImluZm9AeW91dml0LmNvLmlkIiwiYXV0aF90aW1lIjoiMDIvMjAvMjAyNSAwNDowNzowOSIsInRlbmFudF9pZCI6IjMwNzAzMCIsImRiX25hbWUiOiJtdC1wcm9kLVRlbmFudHMiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBRE1JTklTVFJBVE9SIiwiZXhwIjoyNTM0MDIzMDA4MDAsImlzcyI6IkNsYXJlX0FJIiwiYXVkIjoiQ2xhcmVfQUkifQ.zWepdr3ktfbf0Jd5NCw_Ya5OoOVM7wN3S1htq3Y8IJo"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1260, 860],
+      "id": "a6d35aad-fb90-4542-9910-45caf4ed4500",
+      "name": "WhatsApp_Sender"
+    }
+  ],
+  "pinData": {
+    "WhatsApp_Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.youvit.co.id",
+            "content-length": "725",
+            "content-type": "application/json; charset=utf-8",
+            "traceparent": "00-f58e5a1809e229dc7e0685e9cba42187-b0f02f933a30c059-00",
+            "tracestate": "dd=s:0;p:b0f02f933a30c059",
+            "x-datadog-parent-id": "12749742854468845657",
+            "x-datadog-sampling-priority": "0",
+            "x-datadog-tags": "_dd.p.tid=f58e5a1809e229dc",
+            "x-datadog-trace-id": "9081092937829589383",
+            "x-forwarded-for": "34.142.173.183",
+            "x-forwarded-host": "n8n.youvit.co.id",
+            "x-forwarded-proto": "https",
+            "accept-encoding": "gzip"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "id": "67bd8e960930ff41dae8d161",
+            "created": "2025-02-25T09:34:13.9816377Z",
+            "whatsappMessageId": "wamid.HBgNNjI4MjI4NDQ3NzY0MBUCABIYIEI5OUI1Mzg1Njg1QkJFMDRGRjBEMTBDMUNBRjYwRUE4AA==",
+            "conversationId": "6603b1b939859cb13f9090ea",
+            "ticketId": "67bd8e56a505965c4b23da80",
+            "text": "apa saja produk youvit?",
+            "type": "text",
+            "data": null,
+            "sourceId": null,
+            "sourceUrl": null,
+            "timestamp": "1740476052",
+            "owner": false,
+            "eventType": "message",
+            "statusString": "SENT",
+            "avatarUrl": null,
+            "assignedId": null,
+            "operatorName": null,
+            "operatorEmail": null,
+            "waId": "6282284477640",
+            "messageContact": null,
+            "senderName": "Hasbi",
+            "listReply": null,
+            "interactiveButtonReply": null,
+            "buttonReply": null,
+            "replyContextId": "",
+            "sourceType": 7,
+            "frequentlyForwarded": false,
+            "forwarded": false
+          },
+          "webhookUrl": "https://n8n.youvit.co.id/webhook/4e6d2615-3f81-46a2-aeb6-1c4ccfc07be0",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "CSV_Data_Source": {
+      "main": [
+        [
+          {
+            "node": "CSV_Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CSV_Parser": {
+      "main": [
+        [
+          {
+            "node": "Knowledge_Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Document_Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Knowledge_Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text_Chunker": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Document_Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector_Embedder1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Knowledge_Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp_Webhook": {
+      "main": [
+        [
+          {
+            "node": "Message_Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message_Parser": {
+      "main": [
+        [
+          {
+            "node": "Session_Retriever",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session_Retriever": {
+      "main": [
+        [
+          {
+            "node": "Session_Validator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session_Validator": {
+      "main": [
+        [
+          {
+            "node": "Session_Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session_Router": {
+      "main": [
+        [
+          {
+            "node": "Session_Creator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Session_Creator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Session_Creator": {
+      "main": [
+        [
+          {
+            "node": "Session_Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session_Storage": {
+      "main": [
+        [
+          {
+            "node": "Intent_Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent_Router": {
+      "main": [
+        [
+          {
+            "node": "Response_Generator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handoff_Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handoff_Message": {
+      "main": [
+        [
+          {
+            "node": "Human_Assignment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG_Trigger": {
+      "main": [
+        [
+          {
+            "node": "Query_Embedder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query_Embedder": {
+      "main": [
+        [
+          {
+            "node": "Embedding_Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embedding_Extractor": {
+      "main": [
+        [
+          {
+            "node": "Similarity_Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Similarity_Search": {
+      "main": [
+        [
+          {
+            "node": "Context_Retriever",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Results_Splitter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context_Retriever": {
+      "main": [
+        [
+          {
+            "node": "Context_Splitter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Results_Splitter": {
+      "main": [
+        [
+          {
+            "node": "Data_Combiner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context_Splitter": {
+      "main": [
+        [
+          {
+            "node": "Data_Combiner",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Data_Combiner": {
+      "main": [
+        [
+          {
+            "node": "Data_Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data_Formatter": {
+      "main": [
+        [
+          {
+            "node": "Response_Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM_Engine": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Response_Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation_Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Response_Generator",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge_Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Response_Generator",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response_Generator": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp_Sender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "19034097-7d78-46bb-9d6d-4d129663d52f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "051d051046f553ed3d40584ded7d3abfe286e3e8ec10009bf24e3d003d84cf3a"
+  },
+  "id": "6y5RqkgGcTTf7DHt",
+  "tags": []
+}
